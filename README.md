@@ -1,4 +1,4 @@
-# Turbofan Engine Remaining Useful Life Prediction | NASA C-MAPSS FD001
+# MMA3001 Project — Turbofan Engine Remaining Useful Life Prediction
 
 **MMA3001 numerical methods and machine learning project**  
 **Task:** Predict the remaining useful life (RUL) of simulated turbofan engines in **operating cycles** from sensor observations.
