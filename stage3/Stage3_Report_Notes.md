@@ -42,7 +42,7 @@ Impurity-based Random Forest feature importances place `cycle` (~0.542 relative 
 
 ## Important limitations and risk discussion
 
-- **Simulator vs real engines:** FD001 is not field-collected A320 engine data; its failure modes and operating regimes do not cover in-service complexity.
+- **Simulator vs real engines:** FD001 contains simulated, not field-collected, engine data; its failure modes and operating regimes do not cover the complexity of in-service engines.
 - **Limited validation sample:** Results reflect only 20 engines, each with one artificially selected cut-off at 30–90% of its full lifetime. This differs from the unknown NASA official test censoring process.
 - **Static predictor limitation:** These models use the current cycle and current sensor values, not explicit historical windows, temporal derivatives or recurrent models.
 - **MLP early stopping:** Its internal early-stop split is by row, taken entirely from the training engine pool; it is not an independent engine-group evaluation.
