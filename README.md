@@ -131,7 +131,7 @@ random seeds. Results can vary slightly between environments.
 
 ## Limitations
 
-This is synthetic simulator data, not operational telemetry from a particular Airbus A320 engine. The predictions concern a single FD001 fault scenario, not all engine failures. Validation covers only a small number of held-out engines and there is substantial uncertainty, especially for a safety-critical maintenance decision.
+This dataset contains simulated turbofan engine measurements, not operational telemetry collected from in-service aircraft engines. The predictions concern a single FD001 fault scenario, not all engine failures. Validation covers only a small number of held-out engines and there is substantial uncertainty, especially for a safety-critical maintenance decision.
 
 ## MMA3001 repository assessment deliverables
 
