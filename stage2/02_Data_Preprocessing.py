@@ -5,12 +5,14 @@ Outputs: stage2/processed/ and stage2/figures/
 """
 
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import json
 import joblib
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.model_selection import GroupShuffleSplit
+from scripts.rul_utils import calculate_rul, split_engine_indices, select_sensor_columns, last_observation_per_engine
 from sklearn.preprocessing import StandardScaler
 
 BASE = Path(__file__).resolve().parent
@@ -34,8 +36,7 @@ for df in (train,test):
     assert all(np.array_equal(group.cycle.to_numpy(), np.arange(1,len(group)+1))
                for _, group in df.groupby('engine_id'))
 
-failure_cycle = train.groupby('engine_id').cycle.max()
-train['RUL'] = train.engine_id.map(failure_cycle) - train.cycle
+train['RUL'] = calculate_rul(train)
 assert (train.RUL >= 0).all()
 assert (train.groupby('engine_id').RUL.min() == 0).all()
 print('Original training:', train.shape, '| test:', test.shape)
@@ -43,8 +44,7 @@ print('RUL range (training):',train.RUL.min(),train.RUL.max())
 print(train[['engine_id','cycle','sensor_4','sensor_11','RUL']].head(5).to_string(index=False))
 
 SPLIT_SEED = 42
-splitter = GroupShuffleSplit(n_splits=1, test_size=0.20, random_state=SPLIT_SEED)
-indices_train, indices_val = next(splitter.split(train, groups=train.engine_id))
+indices_train, indices_val = split_engine_indices(train, test_size=0.20, random_state=SPLIT_SEED)
 development = train.iloc[indices_train].copy().sort_values(['engine_id','cycle']).reset_index(drop=True)
 validation = train.iloc[indices_val].copy().sort_values(['engine_id','cycle']).reset_index(drop=True)
 ids_train = sorted(development.engine_id.unique().astype(int).tolist())
@@ -71,8 +71,7 @@ fig.savefig(FIG/'01_engine_level_split.png',dpi=180)
 plt.close(fig)
 
 distinct_counts = development[SENSOR_COLS].nunique()
-EXCLUDED_SENSORS = distinct_counts[distinct_counts <= 2].index.tolist()
-SELECTED_SENSORS = [sensor for sensor in SENSOR_COLS if sensor not in EXCLUDED_SENSORS]
+SELECTED_SENSORS, EXCLUDED_SENSORS = select_sensor_columns(development)
 FEATURES = ['cycle'] + SELECTED_SENSORS
 CYCLE_ONLY = ['cycle']
 assert len(EXCLUDED_SENSORS) == 7, EXCLUDED_SENSORS
@@ -114,9 +113,7 @@ fig.tight_layout()
 fig.savefig(FIG/'02_validation_snapshots.png',dpi=180)
 plt.close(fig)
 
-test_endpoints = (test.sort_values(['engine_id','cycle'])
-                  .groupby('engine_id',as_index=False).tail(1)
-                  .sort_values('engine_id').reset_index(drop=True))
+test_endpoints = last_observation_per_engine(test)
 assert test_endpoints.engine_id.nunique() == 100 and len(test_endpoints) == 100
 assert 'RUL' not in test_endpoints.columns
 

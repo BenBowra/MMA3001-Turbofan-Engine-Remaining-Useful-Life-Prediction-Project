@@ -12,9 +12,12 @@ Outputs: stage1/figures/
 # 1 — Imports and file loading
 
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scripts.rul_utils import calculate_rul
 
 # Locate the data relative to this script, independent of working directory.
 BASE = Path(__file__).resolve().parent
@@ -36,6 +39,7 @@ print(train.head().to_string(index=False))
 # 2 — Data quality checks
 
 def audit(df, name):
+    """Report data-quality, engine-count and cycle-continuity diagnostics."""
     missing = int(df.isna().sum().sum())
     duplicates = int(df.duplicated(subset=['engine_id', 'cycle']).sum())
     counts = df.groupby('engine_id').size()
@@ -70,8 +74,7 @@ print(train_lengths.describe().to_string())
 
 # 4 — Construct training RUL target
 
-failure_cycles = train.groupby('engine_id')['cycle'].max()
-train['RUL'] = train['engine_id'].map(failure_cycles) - train['cycle']
+train['RUL'] = calculate_rul(train)
 assert (train.groupby('engine_id')['RUL'].min() == 0).all()
 print(train[['engine_id', 'cycle', 'RUL']].head(7).to_string(index=False))
 print('RUL range:', int(train.RUL.min()), 'to', int(train.RUL.max()), 'cycles')

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 NEEDED = ('train_FD001.txt','test_FD001.txt','RUL_FD001.txt','readme.txt')
 
 def extract(path):
+    """Read original FD001 files from a NASA inner or outer ZIP archive."""
     with ZipFile(path) as outer:
         inner_names = [n for n in outer.namelist() if n.endswith('CMAPSSData.zip')]
         if inner_names:
@@ -27,6 +28,7 @@ def extract(path):
         return read_data(outer)
 
 def read_data(z):
+    """Read exactly one copy of each required FD001 archive member."""
     out={}
     for filename in NEEDED:
         matches=[n for n in z.namelist() if n.split('/')[-1] == filename]
@@ -36,6 +38,7 @@ def read_data(z):
     return out
 
 def main():
+    """Extract original FD001 source data into stage-specific data folders."""
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('archive',type=Path,help='NASA outer ZIP or CMAPSSData.zip')
     args=parser.parse_args()

@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent
 
 
 def execute(relative_script: str, *args: str) -> None:
+    """Execute one stage in a subprocess using the current Python environment."""
     script = ROOT / relative_script
     print(f"\n{'=' * 65}\nRunning {relative_script}\n{'=' * 65}", flush=True)
     env = os.environ.copy()
@@ -31,6 +32,7 @@ def execute(relative_script: str, *args: str) -> None:
 
 
 def main() -> None:
+    """Execute all four stages in order, optionally extracting the original NASA ZIP."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--archive', type=Path,
         help='NASA ZIP archive, either outer repository ZIP or CMAPSSData.zip')

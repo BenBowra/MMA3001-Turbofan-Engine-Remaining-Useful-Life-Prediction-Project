@@ -1,3 +1,9 @@
+"""Stage 4: Evaluate frozen FD001 models on 100 official NASA test engines.
+
+Retrain on all complete training engines; only read official test RUL labels
+after model predictions have been generated. Save comparison metrics/figures.
+"""
+
 # %% [markdown]
 # # MMA3001 · Stage 4: NASA C-MAPSS FD001 final test evaluation
 # This script is self-contained within the Stage4 package. Stage 3 model
@@ -5,6 +11,8 @@
 
 # %%
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import json, time, warnings
 import numpy as np
 import pandas as pd
@@ -18,6 +26,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.exceptions import ConvergenceWarning
+from scripts.rul_utils import calculate_rul, last_observation_per_engine, predict_nonnegative_rul
 
 ROOT = Path(__file__).resolve().parent
 DATA, RESULTS, FIG, MODELS = (ROOT/item for item in ('data','results','figures','models'))
@@ -45,12 +54,10 @@ assert not train.duplicated(subset=['engine_id','cycle']).any()
 assert not test.duplicated(subset=['engine_id','cycle']).any()
 assert (train.groupby('engine_id').cycle.min()==1).all()
 assert (test.groupby('engine_id').cycle.min()==1).all()
-train['RUL'] = train.groupby('engine_id')['cycle'].transform('max')-train['cycle']
+train['RUL'] = calculate_rul(train)
 assert train.groupby('engine_id').RUL.min().eq(0).all()
 # Latest available test observation for each engine; no future measurements used.
-endpoint = (test.sort_values(['engine_id','cycle'])
-            .groupby('engine_id',as_index=False).tail(1)
-            .sort_values('engine_id').reset_index(drop=True))
+endpoint = last_observation_per_engine(test)
 assert len(endpoint)==100 and np.array_equal(endpoint.engine_id.values,np.arange(1,101))
 assert not endpoint[FEATURES].isna().any().any()
 print('Training: 20,631 cycles, 100 complete engine histories')
@@ -92,7 +99,7 @@ for name,model in models.items():
         warnings.simplefilter('always',ConvergenceWarning)
         model.fit(train[PREDICTORS[name]],y_train)
     fit_secs = time.perf_counter()-t0
-    p = np.maximum(0,model.predict(endpoint[PREDICTORS[name]]).astype(float))
+    p = predict_nonnegative_rul(model, endpoint[PREDICTORS[name]])
     assert len(p)==100 and np.isfinite(p).all()
     col='pred_'+name.lower().replace(' ','_').replace('-','_')
     predictions[col]=p

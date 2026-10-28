@@ -3,6 +3,8 @@
 Run from the Stage3 directory. No official NASA test labels/files are loaded.
 """
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import json
 import time
 import warnings
@@ -18,6 +20,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.exceptions import ConvergenceWarning
+from scripts.rul_utils import predict_nonnegative_rul
 
 BASE = Path(__file__).resolve().parent
 DATA, RESULTS, FIG, MODELS = (BASE / sub for sub in ('data', 'results', 'figures', 'models'))
@@ -87,7 +90,8 @@ PRED_ORDER = list(models)
 
 # %%
 def predict_rul(model, X):
-    return np.maximum(0.0, np.asarray(model.predict(X), dtype=float))
+    """Return physical nonnegative remaining-life predictions in cycles."""
+    return predict_nonnegative_rul(model, X)
 
 records=[]
 all_predictions={'engine_id':val.engine_id.to_numpy(dtype=int),
