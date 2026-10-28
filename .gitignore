@@ -1,0 +1,30 @@
+# Python environments and local caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Raw NASA data and generated intermediary datasets
+stage1/data/
+stage2/data/
+stage3/data/
+stage4/data/*.txt
+stage4/data/*.csv
+stage4/data/*.npz
+
+# Trained models and temporary outputs
+*.pkl
+*.pickle
+*.joblib
+*.npy
+*.npz
+*.parquet
+*.zip
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
