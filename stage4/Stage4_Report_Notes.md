@@ -23,7 +23,7 @@ The Neural Network overestimated RUL for 64 of 100 test engines, and underestima
 When grouped by true RUL, the Neural Network MAE was approximately 9.17 cycles for 25 engines with 0–30 actual cycles remaining; 8.68 cycles for 14 engines with 31–60; 25.42 cycles for 15 engines with 61–90; and 23.73 cycles for 46 engines with over 90. These are retrospective descriptive groups, not labels available at prediction time.
 
 ## Limitations and uncertainty
-* All results come from simulated FD001 high-pressure compressor degradation under one operating condition, not actual airline flight/maintenance histories or a specific Airbus A320 engine.
+* All results come from simulated FD001 high-pressure compressor degradation under one operating condition, not measurements from actual airline flight or maintenance histories.
 * The 100 test-engine endpoints do not evaluate performance for all stages of every engine's life.
 * Stage 3's holdout validation covered only 20 artificially censored engines, so its ranking had uncertainty and differed in censoring distribution from NASA's official test.
 * The MLP's internal early-stopping split is based on sample rows, not entire engines, but all rows belong to the training fleet; it is not used as an external generalisation score.
