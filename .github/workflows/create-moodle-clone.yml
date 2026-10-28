@@ -1,0 +1,58 @@
+name: Create Moodle repository clone
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/create-moodle-clone.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package-clone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out complete Git history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create and verify a clean full Git clone
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLONE_DIR="$RUNNER_TEMP/MMA3001-Turbofan-Engine-Remaining-Useful-Life-Prediction-Project"
+          git clone --no-local --branch main --single-branch "$GITHUB_WORKSPACE" "$CLONE_DIR"
+          git -C "$CLONE_DIR" remote set-url origin "https://github.com/$GITHUB_REPOSITORY.git"
+          test -f "$CLONE_DIR/.git/HEAD"
+          test -f "$CLONE_DIR/README.md"
+          test -f "$CLONE_DIR/LICENSE"
+          test -f "$CLONE_DIR/docs/html/index.html"
+          test -f "$CLONE_DIR/docs/test_report.html"
+          test -f "$CLONE_DIR/requirements.txt"
+          test -f "$CLONE_DIR/stage3/03_Model_Training.py"
+          test -f "$CLONE_DIR/stage4/04_Final_Evaluation.py"
+          test -d "$CLONE_DIR/tests"
+          test "$(git -C "$CLONE_DIR" rev-parse --is-shallow-repository)" = false
+          test "$(git -C "$CLONE_DIR" rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "$(git -C "$CLONE_DIR" status --porcelain)"
+          if grep -Eqi 'x-access-token|github_pat_|ghp_' "$CLONE_DIR/.git/config"; then
+            echo "Unexpected credentials in clone" >&2
+            exit 1
+          fi
+          echo "Clone verified."
+          echo "Commit: $(git -C "$CLONE_DIR" rev-parse --short HEAD)"
+          echo "Git commits: $(git -C "$CLONE_DIR" rev-list --count HEAD)"
+          echo "Tracked files: $(git -C "$CLONE_DIR" ls-files | wc -l)"
+
+      - name: Upload the clone ZIP for Moodle
+        uses: actions/upload-artifact@v4
+        with:
+          name: MMA3001_Final_Repository_Clone
+          path: ${{ runner.temp }}/MMA3001-Turbofan-Engine-Remaining-Useful-Life-Prediction-Project/
+          include-hidden-files: true
+          compression-level: 6
+          retention-days: 30
+          if-no-files-found: error
