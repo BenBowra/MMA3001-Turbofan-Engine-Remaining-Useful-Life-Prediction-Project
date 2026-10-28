@@ -1,0 +1,4 @@
+comparison,MAE_advantage_NN_cycles,95_bootstrap_low_cycles,95_bootstrap_high_cycles
+Neural Network vs Cycle-only baseline,15.210776804847375,10.651207787653075,19.71633545393702
+Neural Network vs Linear Regression,7.341964519962557,4.832421421303999,9.85912472260279
+Neural Network vs Random Forest,1.349192611596244,-0.15321582610067208,2.903042743348961
