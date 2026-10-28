@@ -3,7 +3,7 @@
 **MMA3001 numerical methods and machine learning project**  
 **Task:** Predict the remaining useful life (RUL) of simulated turbofan engines in **operating cycles** from sensor observations.
 
-![Actual vs predicted RUL on 100 NASA FD001 test engines](stage4/figures/02_official_test_actual_vs_predicted.png)
+![Actual vs predicted RUL on 100 NASA FD001 test engines](stage4/figures/02_official_test_actual_vs_predicted.svg)
 
 ## Overview
 
@@ -17,26 +17,30 @@ The modelling pipeline compares five methods:
 1. Mean-RUL baseline
 2. Cycle-only linear regression baseline
 3. Multivariate Linear Regression
-4. Random Forest Regression
+4. Decision Tree Regression
 5. Feedforward Neural Network (MLP)
+
+### Alignment with MMA3001 Week 5
+
+The final methods are **Linear Regression (5.1)**, **Decision Tree Regression (5.2)** and **Neural Network Regression (5.4)**. The single tree uses `max_depth=8`, `min_samples_leaf=5` and `random_state=42` to constrain overfitting. Random Forest was used in an earlier project version and was replaced **after prior NASA test results had been viewed**; that historical version remains in Git history. The revised official-test comparison is therefore a curriculum-driven exploratory analysis.
 
 ## Official FD001 test results
 
-The models were fixed using an engine-disjoint development/validation split, then refitted on all 100 training engines and evaluated once on the 100 official test-engine endpoints. RUL targets are **uncapped** and predictions are clipped to nonnegative values.
+The revised models were compared using an engine-disjoint development/validation split, then refitted on all 100 training engines and evaluated on the 100 official test-engine endpoints. The earlier project had already examined official test results, so this later curriculum-driven revision is not a completely blind evaluation. RUL targets are **uncapped** and predictions are clipped to nonnegative values.
 
 | Model | MAE (cycles) ↓ | RMSE (cycles) ↓ | R² ↑ |
 |:--|--:|--:|--:|
 | **Neural Network** | **18.24** | **24.96** | **0.639** |
-| Random Forest | 19.58 | 26.41 | 0.596 |
+| Decision Tree | 22.68 | 29.49 | 0.496 |
 | Linear Regression | 25.58 | 30.84 | 0.449 |
 | Cycle-only baseline | 33.46 | 39.31 | 0.105 |
 | Mean baseline | 40.88 | 52.63 | -0.604 |
 
-The Neural Network improved MAE by approximately **45.5%** relative to the cycle-only baseline. Its advantage over Random Forest was much smaller (**1.35 cycles MAE**), and a paired bootstrap interval included zero; do not interpret this result as decisive superiority over Random Forest.
+The Neural Network improved MAE by approximately **45.5%** relative to the cycle-only baseline. Its observed advantage over the **single Decision Tree** was approximately **4.44 cycles MAE** (paired bootstrap interval about **1.83–7.00 cycles**). Because the earlier official FD001 test results had been inspected before this curriculum-driven model change, this revised comparison is exploratory rather than fully blind.
 
 **Maintenance caveat:** The Neural Network overestimated RUL on **64/100** engines and had a mean signed error of **+9.94 cycles**. These are simulated benchmark results, **not** a certified real-aircraft prognostics system.
 
-![Model comparison, MAE and RMSE](stage4/figures/01_official_test_MAE_RMSE.png)
+![Model comparison, MAE and RMSE](stage4/figures/01_official_test_MAE_RMSE.svg)
 
 ## Project organisation (Python scripts only)
 
@@ -56,7 +60,7 @@ MMA3001-Project/
 │   ├── 02_Data_Preprocessing.py # Engineer-level split, labels, features
 │   └── figures/
 ├── stage3/
-│   ├── 03_Model_Training.py     # Baselines, Linear, RF and MLP
+│   ├── 03_Model_Training.py     # Baselines, Linear, Tree and MLP
 │   ├── results/
 │   └── figures/
 ├── stage4/
@@ -125,7 +129,7 @@ random seeds. Results can vary slightly between environments.
 - Split the 100 complete training engines into **80 development engines and 20 independent validation engines**; never randomly split rows from the same engine across groups.
 - Score model selection on one artificially censored observation per validation engine (20 validation predictions).
 - Fit any feature standardisation on training engines only.
-- Fix model configurations before using the 100 official test-engine RUL labels.
+- For each fresh run, fit models and make predictions before loading test RUL labels; acknowledge that earlier test results had already been viewed before the later model change.
 - Refit each model on all 100 training engines; evaluate one final available sensor observation per official test engine.
 - Examine overestimation separately because high RUL forecasts can be problematic for maintenance planning.
 

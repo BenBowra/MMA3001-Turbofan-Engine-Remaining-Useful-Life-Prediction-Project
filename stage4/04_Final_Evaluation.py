@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import joblib
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -41,7 +41,7 @@ print('Stage 4 root:',ROOT)
 # %%
 stage3 = json.loads((DATA/'stage3_model_decision.json').read_text())
 FEATURES = stage3['features']
-assert stage3['provisional_winner'] == 'Neural Network'
+assert stage3['provisional_winner'] in {'Neural Network','Decision Tree','Linear Regression','Cycle-only baseline','Mean baseline'}
 assert stage3['official_test_labels_read'] is False
 assert FEATURES == ['cycle'] + [f'sensor_{j}' for j in [2,3,4,7,8,9,11,12,13,14,15,17,20,21]]
 COLS = ['engine_id','cycle'] + [f'operating_setting_{j}' for j in range(1,4)] + [f'sensor_{j}' for j in range(1,22)]
@@ -75,9 +75,8 @@ models = {
     'Cycle-only baseline': LinearRegression(),
     'Linear Regression': Pipeline([
         ('scaler',StandardScaler()),('regressor',LinearRegression())]),
-    'Random Forest': RandomForestRegressor(
-        n_estimators=160,max_depth=14,min_samples_leaf=5,
-        max_features=.8,random_state=42,n_jobs=-1),
+    'Decision Tree': DecisionTreeRegressor(
+        max_depth=8,min_samples_leaf=5,random_state=42),
     'Neural Network': Pipeline([
         ('scaler',StandardScaler()),
         ('regressor',MLPRegressor(
@@ -111,7 +110,9 @@ assert not any(x['convergence_warning'] for x in fit_info), 'MLP did not converg
 
 # %% [markdown]
 # ## 3. One-time official NASA test label evaluation
-# Model settings were frozen in Stage 3. Do not use these test results to tune
+# Curriculum-driven revision follows earlier inspection of FD001 official test results.
+# Revised test performance is thus exploratory, not a pristine blind holdout.
+# Model settings remain fixed; do not use these results to tune
 # parameters or select features: that would invalidate the held-out evaluation.
 
 # %%
@@ -159,14 +160,16 @@ ci=pd.DataFrame([{'model':name,
 results=results.merge(ci,on='model')
 selected_name=stage3['provisional_winner']
 pairwise=[]
-for other in ('Cycle-only baseline','Linear Regression','Random Forest'):
-    diff=bootstrap_mae[other]-bootstrap_mae[selected_name]  # positive favours prechosen NN
+for other in ('Cycle-only baseline','Linear Regression','Decision Tree'):
+    if other == selected_name:
+        continue
+    diff=bootstrap_mae[other]-bootstrap_mae[selected_name]  # positive favours provisional Stage 3 winner
     pairwise.append({'comparison':f'{selected_name} vs {other}',
-                     'MAE_advantage_NN_cycles':float(diff.mean()),
+                     'MAE_advantage_selected_cycles':float(diff.mean()),
                      '95_bootstrap_low_cycles':float(np.quantile(diff,.025)),
                      '95_bootstrap_high_cycles':float(np.quantile(diff,.975))})
 paired=pd.DataFrame(pairwise)
-print('\nPaired descriptive 95% bootstrap intervals for MAE difference (positive = NN better):')
+print('\nPaired descriptive 95% bootstrap intervals for MAE difference (positive = provisional model better):')
 print(paired.round(2).to_string(index=False))
 
 # %% [markdown]
@@ -181,12 +184,12 @@ with (RESULTS/'evaluation_protocol.json').open('w') as f:
        'frozen_features':FEATURES,'training_engines':100,'train_rows':len(train),
        'test_engines':100,'test_scoring':'one last-observed cycle per engine',
        'target':'uncapped RUL cycles','negatives_clipped_to_zero':True,
-       'data_usage':'all 100 training engine histories used to fit; NASA official test RUL opened after predictions produced',
-       'selection_warning':'DO NOT revise hyperparameters or select features from these official test results',
+       'data_usage':'all 100 training engines used to fit; on this revision test targets loaded after predictions, but an earlier Random Forest-based run already exposed official test results',
+       'selection_warning':'Decision Tree replaced Random Forest for Week 5.2 after earlier official test results had been inspected; revised comparison is exploratory and not truly blind',
        'bootstraps':5000,'seed':202604},f,indent=2)
 
 colors={'Mean baseline':'#969696','Cycle-only baseline':'#7799B6',
-        'Linear Regression':'#2677A9','Random Forest':'#C48A2D','Neural Network':'#368877'}
+        'Linear Regression':'#2677A9','Decision Tree':'#C48A2D','Neural Network':'#368877'}
 ordered=list(models)
 fig,axs=plt.subplots(1,2,figsize=(12.4,4.8))
 for ax,metric,title in zip(axs,['MAE_cycles','RMSE_cycles'],['Mean absolute error','Root mean squared error']):
@@ -201,7 +204,7 @@ fig.savefig(FIG/'01_official_test_MAE_RMSE.png',dpi=180,bbox_inches='tight')
 plt.close(fig)
 
 # %%
-chosen=['Linear Regression','Random Forest','Neural Network']
+chosen=['Linear Regression','Decision Tree','Neural Network']
 fig,axs=plt.subplots(1,3,figsize=(13.3,4.5),sharex=True,sharey=True)
 maxv=max(y_test.max(),max(predictions['pred_'+n.lower().replace(' ','_')].max() for n in chosen))*1.04
 for ax,name in zip(axs,chosen):
@@ -268,6 +271,6 @@ assert predictions.actual_RUL.notna().all()
 assert np.all(np.isfinite(predictions.select_dtypes('number').values))
 assert (predictions[[c for c in predictions if c.startswith('pred_')]]>=0).all().all()
 print('\nFINAL INTEGRITY CHECKS PASSED')
-print('Official NASA test labels only evaluated after final model fitting.')
+print('On this rerun labels were loaded after fitting, but earlier NASA test results were already seen.')
 print('Stage 3 selected model:',selected_name)
-print('Official test ranking shown descriptively: not used to retune models.')
+print('Revised official test ranking is exploratory (prior test exposure).')

@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.dummy import DummyRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.tree import DecisionTreeRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -55,7 +55,10 @@ print('Target: original uncapped RUL in cycles')
 print('Validation RUL: min',y_val.min(),'/ median',np.median(y_val),'/ max',y_val.max())
 
 # %%
-# Fixed preselected configurations; no grid search on 20 validation snapshots.
+# Curriculum-alignment revision: a single Decision Tree replaces Random Forest.
+# Prior NASA test results had already been viewed; revised test comparisons are exploratory.
+# Fixed depth=8 / min_samples_leaf=5 to limit overfitting; no test-based tuning.
+# No grid search on 20 validation snapshots.
 # Each pipeline independently fits its scaler using the TRAINING engines only.
 # MLP early stopping uses a fraction of those training-engine rows; NEVER the 20
 # entirely held-out validation engines. Its internal row-level stopping split
@@ -67,9 +70,8 @@ models = {
     'Linear Regression': Pipeline([
         ('scaler', StandardScaler()),
         ('regressor', LinearRegression())]),
-    'Random Forest': RandomForestRegressor(
-        n_estimators=160, max_depth=14, min_samples_leaf=5,
-        max_features=0.8, random_state=42, n_jobs=-1),
+    'Decision Tree': DecisionTreeRegressor(
+        max_depth=8, min_samples_leaf=5, random_state=42),
     'Neural Network': Pipeline([
         ('scaler', StandardScaler()),
         ('regressor', MLPRegressor(
@@ -83,7 +85,7 @@ PREDICTOR_SETS = {
     'Mean baseline': FEATURES,
     'Cycle-only baseline': ['cycle'],
     'Linear Regression': FEATURES,
-    'Random Forest': FEATURES,
+    'Decision Tree': FEATURES,
     'Neural Network': FEATURES,
 }
 PRED_ORDER = list(models)
@@ -163,7 +165,7 @@ fig.savefig(FIG/'01_validation_MAE_RMSE_comparison.png',dpi=180,bbox_inches='tig
 plt.close(fig)
 
 # %%
-selected=['Linear Regression','Random Forest','Neural Network']
+selected=['Linear Regression','Decision Tree','Neural Network']
 fig,axs=plt.subplots(1,3,figsize=(13,4.3),sharex=True,sharey=True)
 for ax,name in zip(axs,selected):
     pred=predictions[f'pred_{name.replace(" ", "_")}'].to_numpy()
@@ -179,7 +181,7 @@ plt.close(fig)
 
 # %%
 fig,ax=plt.subplots(figsize=(9.5,4.8))
-for name,colour in [('Cycle-only baseline','#8D8D8D'),('Linear Regression','#277DA8'),('Random Forest','#CE8A32'),('Neural Network','#3D8C75')]:
+for name,colour in [('Cycle-only baseline','#8D8D8D'),('Linear Regression','#277DA8'),('Decision Tree','#CE8A32'),('Neural Network','#3D8C75')]:
     residual = predictions[f'pred_{name.replace(" ", "_")}'].to_numpy()-y_val
     ax.scatter(y_val,residual,label=name,alpha=.80,s=42,color=colour)
 ax.axhline(0,color='black',linewidth=1,linestyle='--')
@@ -191,16 +193,16 @@ fig.savefig(FIG/'03_validation_residuals.png',dpi=180,bbox_inches='tight')
 plt.close(fig)
 
 # %%
-rf = models['Random Forest']
-importance = pd.Series(rf.feature_importances_,index=FEATURES).sort_values(ascending=True)
+tree_model = models['Decision Tree']
+importance = pd.Series(tree_model.feature_importances_,index=FEATURES).sort_values(ascending=True)
 fig,ax=plt.subplots(figsize=(8.3,5.3))
 ax.barh(importance.index,importance.values,color='#3179AA')
-ax.set(xlabel='Random Forest impurity-based importance (relative)',
+ax.set(xlabel='Decision Tree impurity-based importance (relative)',
        title='Indicative feature importance — fitted 80-engine model')
 fig.tight_layout()
-fig.savefig(FIG/'04_random_forest_feature_importance.png',dpi=180,bbox_inches='tight')
+fig.savefig(FIG/'04_decision_tree_feature_importance.png',dpi=180,bbox_inches='tight')
 plt.close(fig)
-print('Most important Random Forest features (indicative only):')
+print('Top Decision Tree features (indicative only):')
 print(importance.sort_values(ascending=False).head(8).round(4).to_string())
 
 # %%
@@ -210,7 +212,7 @@ example_engine=int(val.iloc[0].engine_id)
 example=val_histories[val_histories.engine_id==example_engine].sort_values('cycle')
 fig,ax=plt.subplots(figsize=(9.4,4.7))
 ax.plot(example.cycle, example.RUL, color='black',linewidth=2,label='Actual RUL')
-for name,color in [('Linear Regression','#277DA8'),('Random Forest','#D3942B'),('Neural Network','#37967B')]:
+for name,color in [('Linear Regression','#277DA8'),('Decision Tree','#D3942B'),('Neural Network','#37967B')]:
     p=predict_rul(models[name],example[PREDICTOR_SETS[name]])
     ax.plot(example.cycle,p,label=name,alpha=.82,linewidth=1.4,color=color)
 ax.axvline(int(val.iloc[0].cycle),ls=':',color='#A33737',label='Prechosen validation snapshot')
@@ -237,7 +239,7 @@ choice = {
  'model_parameters':{
      'cycle_only_baseline':'ordinary least squares fit to cycle only',
      'linear_regression':'StandardScaler + ordinary least squares',
-     'random_forest':'160 trees, max_depth=14, min_samples_leaf=5, max_features=0.8, random_state=42',
+     'decision_tree':'single decision tree, max_depth=8, min_samples_leaf=5, random_state=42',
      'neural_network':'StandardScaler + MLP (48,24), ReLU, Adam, alpha=0.01, max_iter=500, early_stopping=True, random_state=42'},
  'important_limitations':['20 validation snapshots; uncertain model rankings',
        'FD001 is simulated and represents one operational condition and one fault mode',
@@ -245,6 +247,7 @@ choice = {
        'MLP internal early stopping uses rows from development engines, not a separate group-held-out set',
        'validation censoring is synthetic, not identical to official test censoring'],
  'official_test_labels_read':False,
+ 'revision_disclosure':'Decision Tree replaced Random Forest for Week 5.2 AFTER previous official test results had been viewed; the new official test comparison is exploratory, not a pristine blind holdout.',
  'next_stage':'Stage 4: refit selected configurations on all 100 original training engines, then score 100 official NASA test endpoints once.'}
 (RESULTS/'stage3_model_decision.json').write_text(json.dumps(choice,indent=2))
 print('Provisional lowest-RMSE model:',primary_winner)

@@ -172,3 +172,19 @@ def test_license_readme_and_generated_docs_exist():
     assert (ROOT/'LICENSE').read_text().startswith('MIT License')
     assert (ROOT/'docs/html/index.html').exists()
     assert (ROOT/'docs/html/scripts_rul_utils.html').exists()
+
+
+def test_course_aligned_models_are_used():
+    """Course-aligned model list uses one Decision Tree, not a Random Forest ensemble."""
+    from pathlib import Path
+    import pandas as pd
+    root = Path(__file__).resolve().parents[1]
+    stage3 = (root/'stage3/03_Model_Training.py').read_text(encoding='utf-8')
+    stage4 = (root/'stage4/04_Final_Evaluation.py').read_text(encoding='utf-8')
+    assert 'DecisionTreeRegressor' in stage3 and 'DecisionTreeRegressor' in stage4
+    assert 'RandomForestRegressor' not in stage3 and 'RandomForestRegressor' not in stage4
+    expected = {'Mean baseline', 'Cycle-only baseline', 'Linear Regression',
+                'Decision Tree', 'Neural Network'}
+    for file in ('stage3/results/model_comparison_validation.csv', 'stage4/results/official_test_metrics.csv'):
+        metrics = pd.read_csv(root/file)
+        assert set(metrics['model']) == expected

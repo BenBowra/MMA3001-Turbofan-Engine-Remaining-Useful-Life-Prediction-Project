@@ -25,7 +25,8 @@
   "target": "uncapped RUL cycles",
   "negatives_clipped_to_zero": true,
   "data_usage": "all 100 training engine histories used to fit; NASA official test RUL opened after predictions produced",
-  "selection_warning": "DO NOT revise hyperparameters or select features from these official test results",
+  "selection_warning": "Do not treat these as pristine blind-test results or use these scores to tune subsequent model choices.",
   "bootstraps": 5000,
-  "seed": 202604
+  "seed": 202604,
+  "revision_disclosure": "Decision Tree added for Week 5.2 after earlier official FD001 test results were viewed; revised model comparisons are exploratory."
 }

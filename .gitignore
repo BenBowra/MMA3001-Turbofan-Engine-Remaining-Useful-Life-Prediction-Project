@@ -28,3 +28,7 @@ stage4/data/*.npz
 .idea/
 .DS_Store
 Thumbs.db
+
+# Pipeline-generated plots: use the checked-in SVG snapshots on GitHub
+stage3/figures/*.png
+stage4/figures/*.png
